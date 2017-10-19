@@ -1,7 +1,7 @@
 export GOPATH = ${PWD}/vendor
 
 CWD = $(shell pwd)
-OUT := ${PWD}/bin/logthing
+OUT := ${PWD}/bin/logbay
 GO_FILES := $(shell find ./src -name '*.go' | grep -v /vendor/)
 VERSION := $(shell git describe --always --long)
 LD_FLAGS := -X main.BUILD_VERSION=${VERSION}

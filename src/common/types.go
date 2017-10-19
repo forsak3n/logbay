@@ -32,6 +32,7 @@ type PointConfig struct {
 	Pattern     string   `toml:"Pattern,omitempty"`
 	Certificate string   `toml:"Certificate,omitempty"`
 	Key         string   `toml:"Key,omitempty"`
+	CA          string   `toml:"CA,omitempty"`
 	Ingests     []string `toml:"Ingests,omitempty"`
 }
 

@@ -6,17 +6,19 @@ import (
 	"context"
 	"crypto/rand"
 	"crypto/tls"
+	"crypto/x509"
 	"errors"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"net"
-	"strings"
 )
 
 type tlsConfig struct {
 	Port int
 	Cert string
 	Key  string
+	CA   string
 }
 
 func StartTLSServer(name string, config *tlsConfig) (common.IngestPoint, error) {
@@ -45,7 +47,17 @@ func StartTLSServer(name string, config *tlsConfig) (common.IngestPoint, error) 
 		return point, err
 	}
 
-	tlsConfig := tls.Config{Certificates: []tls.Certificate{cert}}
+	ca, err := ioutil.ReadFile(config.CA)
+
+	if err != nil {
+		log.Errorf("failed to read root certificate. Err: %s", err.Error())
+		return nil, err
+	}
+
+	roots := x509.NewCertPool()
+	roots.AppendCertsFromPEM(ca)
+
+	tlsConfig := tls.Config{Certificates: []tls.Certificate{cert}, RootCAs: roots}
 	tlsConfig.Rand = rand.Reader
 
 	server, err := tls.Listen("tcp", fmt.Sprintf("0.0.0.0:%d", config.Port), &tlsConfig)
@@ -80,14 +92,18 @@ func read(conn net.Conn, ch chan string) {
 	defer conn.Close()
 
 	for {
-		line, err := bufio.NewReader(conn).ReadString('\n')
+		line, err := bufio.NewReader(conn).ReadBytes('\n')
 
 		if err != nil && err != io.EOF {
 			log.Infof("Socket read error: %s. Terminating connection...", conn.RemoteAddr(), err.Error())
 			break
 		}
 
-		ch <- strings.TrimSpace(strings.TrimSuffix(line, "\n"))
+		if len(line) == 0 {
+			continue
+		}
+
+		ch <- string(line[:len(line) - 1])
 	}
 
 	log.Infof("Connection from %s closed", conn.RemoteAddr())

@@ -33,8 +33,6 @@ func main() {
 	prepareIngests(config.IngestPoints)
 	prepareDigests(config.DigestPoints)
 
-	go runTest()
-
 	<-make(chan byte)
 }
 
@@ -140,25 +138,4 @@ func rotateLog(logfile string) (*os.File, error) {
 	}
 
 	return os.Create(logfile)
-}
-
-func runTest() {
-	cert, err := tls.LoadX509KeyPair("certs/server.pem", "certs/server.key")
-	if err != nil {
-		log.Fatalf("server: loadkeys: %s", err)
-	}
-	config := tls.Config{Certificates: []tls.Certificate{cert}, InsecureSkipVerify: true}
-	conn, err := tls.Dial("tcp", "127.0.0.1:8001", &config)
-	if err != nil {
-		log.Fatalf("client: dial: %s", err)
-	}
-	defer conn.Close()
-	log.Println("client: connected to: ", conn.RemoteAddr())
-
-	for {
-		conn.Write([]byte("{\"companyId\": \"teradek\"}\n"))
-		time.Sleep(time.Second * 2)
-		conn.Write([]byte("{\"companyId\": \"webb\"}\n"))
-		time.Sleep(time.Second * 2)
-	}
 }

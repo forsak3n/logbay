@@ -51,6 +51,7 @@ func NewIngestPoint(i common.PointConfig) (common.IngestPoint, error) {
 			Port: i.Port,
 			Cert: i.Certificate,
 			Key:  i.Key,
+			CA:   i.CA,
 		})
 
 		if err == nil {
