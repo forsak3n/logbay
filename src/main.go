@@ -5,7 +5,6 @@ import (
 	"./digest"
 	"./ingest"
 	"context"
-	"crypto/tls"
 	"flag"
 	"fmt"
 	"github.com/BurntSushi/toml"

@@ -9,7 +9,6 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"net"
 )
@@ -90,20 +89,20 @@ func StartTLSServer(name string, config *tlsConfig) (common.IngestPoint, error) 
 func read(conn net.Conn, ch chan string) {
 
 	defer conn.Close()
+	reader := bufio.NewReader(conn)
 
 	for {
-		line, err := bufio.NewReader(conn).ReadBytes('\n')
+		b, err := reader.ReadBytes('\n')
 
-		if err != nil && err != io.EOF {
-			log.Infof("Socket read error: %s. Terminating connection...", conn.RemoteAddr(), err.Error())
+		if err != nil {
 			break
 		}
 
-		if len(line) == 0 {
+		if len(b) == 0 {
 			continue
 		}
 
-		ch <- string(line[:len(line) - 1])
+		ch <- string(b[:len(b) - 1])
 	}
 
 	log.Infof("Connection from %s closed", conn.RemoteAddr())

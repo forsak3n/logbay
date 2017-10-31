@@ -3,14 +3,14 @@ package digest
 import (
 	"../common"
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/go-redis/redis"
 	"math/rand"
 	"regexp"
-	"strings"
 	"sync"
+	"encoding/json"
+	"strings"
 )
 
 type RedisDigestCfg struct {
@@ -75,7 +75,9 @@ func (p *redisDigest) consume(i common.IngestPoint) {
 	for {
 		select {
 		case msg := <-i.Output():
-			p.redis.Publish(p.expand(p.channel, msg), msg)
+			if expanded := p.expand(p.channel, msg); len(expanded) > 0 {
+				p.redis.Publish(expanded, msg)
+			}
 		case <-p.signals[i.Name()]:
 			log.Infof("Got signal. Stop consuming from %s", i.Name())
 			break
@@ -92,7 +94,7 @@ func (p *redisDigest) expand(channel string, msg string) string {
 
 	if err != nil {
 		log.Errorf("Failed to unmarshal message. Raw: %s. Err: %s", msg, err.Error())
-		return channel
+		return ""
 	}
 
 	return p.regex.ReplaceAllStringFunc(p.channel, func(match string) string {
