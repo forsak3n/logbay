@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net"
+	"io"
 )
 
 type tlsConfig struct {
@@ -94,7 +95,7 @@ func read(conn net.Conn, ch chan string) {
 	for {
 		b, err := reader.ReadBytes('\n')
 
-		if err != nil {
+		if err != nil && err != io.EOF {
 			break
 		}
 
