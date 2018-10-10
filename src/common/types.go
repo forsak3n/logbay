@@ -25,7 +25,7 @@ type LogConfig struct {
 type PointConfig struct {
 	Name        string   `toml:"Name"`
 	Type        string   `toml:"Type,omitempty"`
-	Enabled     bool     `toml:"Enabled,omitempty"`
+	Disabled    bool     `toml:"Disabled,omitempty"`
 	Host        string   `toml:"Host,omitempty"`
 	Port        int      `toml:"Port,omitempty"`
 	Endpoint    string   `toml:"Endpoint,omitempty"`

@@ -44,7 +44,7 @@ func loadConfig(p *string) (*common.AppConfig, error) {
 func prepareIngests(ingests map[string]common.PointConfig) {
 
 	for k, v := range ingests {
-		if v.Enabled {
+		if !v.Disabled {
 			v.Name = k
 			_, err := ingest.NewIngestPoint(v)
 
@@ -58,7 +58,7 @@ func prepareIngests(ingests map[string]common.PointConfig) {
 
 func prepareDigests(digests map[string]common.PointConfig) {
 	for k, dp := range digests {
-		if dp.Enabled {
+		if !dp.Disabled {
 
 			dp.Name = k
 			ingests := make([]common.IngestPoint, 0)
