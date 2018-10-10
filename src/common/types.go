@@ -34,6 +34,7 @@ type PointConfig struct {
 	Key         string   `toml:"Key,omitempty"`
 	CA          string   `toml:"CA,omitempty"`
 	Ingests     []string `toml:"Ingests,omitempty"`
+	Delimiter   byte     `toml:"Delimiter,omitempty"`
 }
 
 type IngestPoint interface {

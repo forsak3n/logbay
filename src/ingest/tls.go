@@ -9,45 +9,51 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net"
-	"io"
 )
 
 type tlsConfig struct {
-	Port int
-	Cert string
-	Key  string
-	CA   string
+	Port      int
+	Cert      string
+	Key       string
+	CA        string
+	Delimiter byte
 }
 
-func StartTLSServer(name string, config *tlsConfig) (common.IngestPoint, error) {
+func NewTLSIngest(name string, conf *tlsConfig) (common.IngestPoint, error) {
 
 	log := common.ContextLogger(context.WithValue(context.Background(), "prefix", "tlsIngest"))
 	point := &ingest{
 		name:       name,
-		ingestType: "tls",
+		ingestType: common.INGEST_TYPE_TLS,
 		out:        make(chan string),
 	}
 
-	if config.Port == 0 {
+	if conf.Port == 0 {
 		log.Warnf("TLS port should be > 0")
 		return point, errors.New("invalid port 0")
 	}
 
-	if len(config.Cert) == 0 || len(config.Key) == 0 {
-		log.Warnf("Invalid certificate or key path. Cert: %s. Key: %s", config.Cert, config.Key)
+	if len(conf.Cert) == 0 || len(conf.Key) == 0 {
+		log.Warnf("Invalid certificate or key path. Cert: %s. Key: %s", conf.Cert, conf.Key)
 		return point, errors.New("invalid certificate or key path")
 	}
 
-	cert, err := tls.LoadX509KeyPair(config.Cert, config.Key)
+	if conf.Delimiter == 0 {
+		log.Infof("Delimiter is not configured. Using '\n'")
+		conf.Delimiter = '\n'
+	}
+
+	cert, err := tls.LoadX509KeyPair(conf.Cert, conf.Key)
 
 	if err != nil {
 		log.Errorf("Failed to load keypair. Err: %s", err.Error())
 		return point, err
 	}
 
-	ca, err := ioutil.ReadFile(config.CA)
+	ca, err := ioutil.ReadFile(conf.CA)
 
 	if err != nil {
 		log.Errorf("failed to read root certificate. Err: %s", err.Error())
@@ -60,7 +66,7 @@ func StartTLSServer(name string, config *tlsConfig) (common.IngestPoint, error) 
 	tlsConfig := tls.Config{Certificates: []tls.Certificate{cert}, RootCAs: roots}
 	tlsConfig.Rand = rand.Reader
 
-	server, err := tls.Listen("tcp", fmt.Sprintf("0.0.0.0:%d", config.Port), &tlsConfig)
+	server, err := tls.Listen("tcp", fmt.Sprintf("0.0.0.0:%d", conf.Port), &tlsConfig)
 
 	if err != nil {
 		log.Errorf("Failed to start server. Err: %s", err.Error())
@@ -78,22 +84,22 @@ func StartTLSServer(name string, config *tlsConfig) (common.IngestPoint, error) 
 				continue
 			}
 
-			log.Infof("Accepted connection from %s", conn.RemoteAddr())
+			log.Debugf("Accepted connection from %s", conn.RemoteAddr())
 
-			go read(conn, ch)
+			go read(conn, ch, conf.Delimiter)
 		}
 	}(server, point.Output())
 
 	return point, nil
 }
 
-func read(conn net.Conn, ch chan string) {
+func read(conn net.Conn, ch chan string, delim byte) {
 
 	defer conn.Close()
 	reader := bufio.NewReader(conn)
 
 	for {
-		b, err := reader.ReadBytes('\n')
+		b, err := reader.ReadBytes(delim)
 
 		if err != nil && err != io.EOF {
 			break
@@ -103,8 +109,14 @@ func read(conn net.Conn, ch chan string) {
 			continue
 		}
 
-		ch <- string(b[:len(b) - 1])
+		select {
+		case ch <- string(b[:len(b)-1]):
+		default:
+			// drop message if there are no consumers
+		}
+
+		ch <- string(b[:len(b)-1])
 	}
 
-	log.Infof("Connection from %s closed", conn.RemoteAddr())
+	log.Debugf("Connection from %s has been closed", conn.RemoteAddr())
 }

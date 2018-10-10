@@ -47,11 +47,12 @@ func NewIngestPoint(i common.PointConfig) (common.IngestPoint, error) {
 
 	switch i.Type {
 	case common.INGEST_TYPE_TLS:
-		point, err := StartTLSServer(i.Name, &tlsConfig{
+		point, err := NewTLSIngest(i.Name, &tlsConfig{
 			Port: i.Port,
 			Cert: i.Certificate,
 			Key:  i.Key,
 			CA:   i.CA,
+			Delimiter: i.Delimiter,
 		})
 
 		if err == nil {
