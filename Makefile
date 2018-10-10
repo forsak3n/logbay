@@ -25,7 +25,7 @@ build: clean
 clean:
 	@echo Cleaning up...
 	-@rm -rf ${CWD}/dist/*
-	-@rm -rf ${CWD}/bin/proton
+	-@rm -rf ${CWD}/bin/logbay
 
 run: build
-	./bin/logthing
+	./bin/logbay

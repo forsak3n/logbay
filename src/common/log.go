@@ -7,7 +7,7 @@ import (
 	"os"
 )
 
-var fields []string = make([]string, 0)
+var fields = make([]string, 0)
 
 func init() {
 	textFormatter := new(prefixed.TextFormatter)

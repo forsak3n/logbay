@@ -46,7 +46,7 @@ func (p *digest) AddIngest(i common.IngestPoint) error {
 	for _, v := range p.inputs {
 		if v.Name() == i.Name() {
 			log.Debugf("Digest %s is already ingesting from %s", p.Name(), i.Name())
-			return errors.New("ingest already has been added")
+			return errors.New("ingest has already been added")
 		}
 	}
 
@@ -75,7 +75,7 @@ func (p *digest) RemoveIngest(name string) {
 
 func NewDigestPoint(config common.PointConfig, ingests []common.IngestPoint) (common.DigestPoint, error) {
 
-	log.Infof("Starting %s ingest point. Type: %s", config.Name, config.Type)
+	log.Infof("Starting %s digest point. Type: %s", config.Name, config.Type)
 
 	switch config.Type {
 	case common.DIGEST_TYPE_FILE:

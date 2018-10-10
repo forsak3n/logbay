@@ -9,8 +9,6 @@ import (
 	"math/rand"
 	"regexp"
 	"sync"
-	"encoding/json"
-	"strings"
 )
 
 type RedisDigestCfg struct {
@@ -26,7 +24,6 @@ type redisDigest struct {
 	redis   *redis.Client
 	signals map[string]chan int
 	channel string
-	regex   *regexp.Regexp
 }
 
 func (p *redisDigest) AddIngest(i common.IngestPoint) error {
@@ -35,7 +32,7 @@ func (p *redisDigest) AddIngest(i common.IngestPoint) error {
 
 	for _, v := range p.inputs {
 		if v.Name() == i.Name() {
-			log.Debugf("Digest %s is already ingesting from %s", p.Name(), i.Name())
+			log.Debugf("Digest %s is already ingesting from %s. Check configuration.", p.Name(), i.Name())
 			return errors.New("ingest already has been added")
 		}
 	}
@@ -70,38 +67,46 @@ func (p *redisDigest) RemoveIngest(name string) {
 func (p *redisDigest) consume(i common.IngestPoint) {
 
 	log := common.ContextLogger(context.WithValue(context.Background(), "prefix", "redisDigest"))
-	log.Infof("Start consuming from %s", i.Name())
+	log.Infof("%s started consuming from %s", p.Name(), i.Name())
 
+	r := regexp.MustCompile("{{(.*?)}}")
+	hasTemplates := r.MatchString(p.channel)
+
+loop:
 	for {
 		select {
-		case msg := <-i.Output():
-			if expanded := p.expand(p.channel, msg); len(expanded) > 0 {
-				p.redis.Publish(expanded, msg)
+		case msg, ok := <-i.Output():
+
+			if !ok {
+				break loop
 			}
+
+			var channel string
+
+			if hasTemplates {
+				channel = p.replaceTemplates(r, p.channel, msg)
+			}
+
+			if len(channel) > 0 {
+				p.redis.Publish(channel, msg)
+			}
+
 		case <-p.signals[i.Name()]:
 			log.Infof("Got signal. Stop consuming from %s", i.Name())
-			break
+			break loop
 		}
 	}
 }
 
-func (p *redisDigest) expand(channel string, msg string) string {
+func (p *redisDigest) replaceTemplates(r *regexp.Regexp, channel string, msg string) string {
+	return r.ReplaceAllStringFunc(p.channel, func(match string) string {
+		key := r.FindStringSubmatch(match)[1]
+		pattern := regexp.MustCompile(fmt.Sprintf(`\\?"%s\\?":\\?"(.*?)\\?"`, key))
 
-	log := common.ContextLogger(context.WithValue(context.Background(), "prefix", "redisDigest"))
-
-	m := make(map[string]string)
-	err := json.Unmarshal([]byte(msg), &m)
-
-	if err != nil {
-		log.Errorf("Failed to unmarshal message. Raw: %s. Err: %s", msg, err.Error())
-		return ""
-	}
-
-	return p.regex.ReplaceAllStringFunc(p.channel, func(match string) string {
-		clean := strings.TrimSuffix(strings.TrimPrefix(match, "{{"), "}}")
-		if v, ok := m[clean]; ok {
-			return v
+		if v := pattern.FindStringSubmatch(msg); len(v) > 0 {
+			return v[1]
 		}
+
 		return match
 	})
 }
@@ -109,43 +114,42 @@ func (p *redisDigest) expand(channel string, msg string) string {
 func NewRedisDigest(cfg *RedisDigestCfg) (common.DigestPoint, error) {
 
 	log := common.ContextLogger(context.WithValue(context.Background(), "prefix", "redisDigest"))
-	log.Debugf("Creating new redis digest point. Host: %s, Port: %d, Channel: %s", cfg.Host, cfg.Port, cfg.Channel)
+
+	if len(cfg.Host) == 0 {
+		log.Debugln("Host is not configured. Using localhost")
+		cfg.Host = "localhost"
+	}
 
 	if cfg.Port == 0 {
+		log.Debugln("Port is not configured. Using localhost")
 		cfg.Port = 6379
 	}
 
-	if len(cfg.Host) == 0 {
-		cfg.Host = "0.0.0.0"
-	}
-
 	if len(cfg.Channel) == 0 {
-		cfg.Channel = "logthing:entry"
+		log.Debugln("Channel is not configured. Using logbay:entry")
+		cfg.Channel = "logbay:entry"
 	}
 
 	if len(cfg.Name) == 0 {
 		cfg.Name = fmt.Sprintf("redis-digest#%d", rand.Int())
 	}
 
-	redis := redis.NewClient(&redis.Options{
+	r := redis.NewClient(&redis.Options{
 		Addr: fmt.Sprintf("%s:%d", cfg.Host, cfg.Port),
 	})
 
-	regex, _ := regexp.Compile(`{{(.*?)}}`)
-
-	log.Infof("DigestPoint %s created", cfg.Name)
+	log.Infof("Created new redis digest point. Host: %s, Port: %d, Channel: %s", cfg.Host, cfg.Port, cfg.Channel)
 
 	d := &redisDigest{
 		digest{
 			mux:        &sync.Mutex{},
 			name:       cfg.Name,
-			digestType: "redis",
+			digestType: common.DIGEST_TYPE_REDIS,
 			inputs:     cfg.Ingests,
 		},
-		redis,
+		r,
 		make(map[string]chan int, 0),
 		cfg.Channel,
-		regex,
 	}
 
 	for _, v := range cfg.Ingests {
