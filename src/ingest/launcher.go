@@ -60,6 +60,17 @@ func NewIngestPoint(i common.PointConfig) (common.IngestPoint, error) {
 
 		return point, err
 	case common.INGEST_TYPE_REDIS:
+		point, err := NewRedisIngest(i.Name, &redisConf{
+			Host:    i.Host,
+			Port:    i.Port,
+			Channel: i.Pattern,
+		})
+
+		if err == nil {
+			SetIngestPoint(point)
+		}
+
+		return point, err
 	case common.INGEST_TYPE_HTTPS:
 	}
 
