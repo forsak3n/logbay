@@ -1,0 +1,63 @@
+# local logging configuration
+[Logger]
+Level = "DEBUG"
+# log file
+File = ""
+# configurable set of fields which will appear in each log entry
+Fields = [
+    "prefix"
+]
+
+# ingest points config. each point must have unique name.
+[IngestPoints]
+
+    # example config section for consuming messages from redis PUBSUB
+    [IngestPoints.redis-in]
+    # (required) ingest point type
+    Type = "redis"
+    # (optional) redis host. defaults to localhost
+    Host = "example.com"     
+    # (optional) redis port. defaults to 6379
+    Port = 6379
+    # (required) Redis PSUBSCRIBE pattern
+    Pattern = "logbay:example:pattern:*"
+    # (optional) default to false
+    Disabled = false
+
+    # example config section for TLS ingest.
+    [IngestPoints.tls-in]
+    # (required) ingest point type
+    Type = "tls"
+    # (required) server port
+    Port = 30443
+    # (required) path to TLS certificate
+    Certificate = "/path/to/certificate"
+    # (required) path to TLS certificate key
+    Key = "/path/to/certificate/key"
+    # (optional) path to CA
+    CA = "/path/to/ca"
+    # (optional) message delimiter. defaults to '\n'
+    Delimiter = '\n'
+    # (optional) default to false
+    Disabled = true
+
+[DigestPoints]
+
+    [DigestPoints.redis-out]
+    # (required) ingest point type
+    Type = "redis"
+    # (optional) destination redis host. defaults to localhost
+    Host = "example.com"
+    # (optional) redis port. defaults to 6379
+    Port = 6379
+    # (required) list of ingests to get messages from
+    Ingests = ["redis-in"]
+    # (optional) redis PSUBSCRIBE pattern. Template variables {{var}} will be substituted with values from incoming message.
+    # useful for routing.
+    # Example: Message {"process": "myprocess", "message": "any message", "id": "12345"} will be published to logbay:myprocess:12345 channel
+    Pattern = "logbay:{{process}}:{{id}}"
+    # (optional) default to false
+    Disabled = false
+
+
+
