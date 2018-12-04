@@ -8,36 +8,11 @@ import (
 	"sync"
 )
 
-type ingest struct {
-	ingestType string
-	name       string
-	out        chan string
-}
+var storage = &sync.Map{}
 
-func (i *ingest) IngestType() string {
-	return i.ingestType
-}
+func NewIngestPoint(i common.PointConfig) (point common.Messenger, err error) {
 
-func (i *ingest) Name() string {
-	return i.name
-}
-
-func (i *ingest) Output() chan string {
-	return i.out
-}
-
-var (
-	log     = common.ContextLogger(context.WithValue(context.Background(), "prefix", "launcher"))
-	storage = struct {
-		mux     *sync.Mutex
-		ingests map[string]common.IngestPoint
-	}{
-		mux:     &sync.Mutex{},
-		ingests: make(map[string]common.IngestPoint),
-	}
-)
-
-func NewIngestPoint(i common.PointConfig) (common.IngestPoint, error) {
+	log := common.ContextLogger(context.WithValue(context.Background(), "prefix", "launcher"))
 
 	log.Infof("Starting %s ingest point. Type: %s", i.Name, i.Type)
 
@@ -45,54 +20,52 @@ func NewIngestPoint(i common.PointConfig) (common.IngestPoint, error) {
 		return nil, errors.New("already exists")
 	}
 
-	switch i.Type {
+	switch common.IngestType(i.Type) {
 	case common.INGEST_TYPE_TLS:
-		point, err := NewTLSIngest(i.Name, &tlsConfig{
-			Port: i.Port,
-			Cert: i.Certificate,
-			Key:  i.Key,
-			CA:   i.CA,
+		point, err = NewTLSIngest(i.Name, &tlsConfig{
+			Port:      i.Port,
+			Cert:      i.Certificate,
+			Key:       i.Key,
+			CA:        i.CA,
 			Delimiter: i.Delimiter,
 		})
-
-		if err == nil {
-			SetIngestPoint(point)
-		}
-
-		return point, err
 	case common.INGEST_TYPE_REDIS:
-		point, err := NewRedisIngest(i.Name, &redisConf{
+		point, err = NewRedisIngest(i.Name, &redisConf{
 			Host:    i.Host,
 			Port:    i.Port,
 			Channel: i.Pattern,
 		})
-
-		if err == nil {
-			SetIngestPoint(point)
-		}
-
-		return point, err
 	case common.INGEST_TYPE_HTTPS:
 	}
 
-	return nil, errors.New(fmt.Sprintf("invalid ingest point type %s", i.Type))
+	if err != nil {
+		return nil, errors.New(fmt.Sprintf("invalid ingest point type %s", i.Type))
+	}
+
+	SetIngestPoint(i.Name, point)
+	return point, err
 }
 
-func GetIngestPoint(name string) (common.IngestPoint, bool) {
-	storage.mux.Lock()
-	defer storage.mux.Unlock()
-	point, ok := storage.ingests[name]
-	return point, ok
+func GetIngestPoint(name string) (common.Messenger, bool) {
+	value, ok := storage.Load(name)
+
+	if !ok {
+		return nil, ok
+	}
+
+	return value.(common.Messenger), ok
 }
 
-func SetIngestPoint(i common.IngestPoint) {
-	storage.mux.Lock()
-	defer storage.mux.Unlock()
-	_, ok := storage.ingests[i.Name()]
+func SetIngestPoint(name string, i common.Messenger) {
+
+	log := common.ContextLogger(context.WithValue(context.Background(), "prefix", "launcher"))
+
+	_, ok := storage.Load(name)
 
 	if ok {
-		log.Warnf("IngestPoint %s already exists", i.Name())
-	} else {
-		storage.ingests[i.Name()] = i
+		log.Warnf("IngestPoint %s already exists. Skip init", name)
+		return
 	}
+
+	storage.Store(name, i)
 }

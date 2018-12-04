@@ -58,26 +58,27 @@ func prepareIngests(ingests map[string]common.PointConfig) {
 
 func prepareDigests(digests map[string]common.PointConfig) {
 	for k, dp := range digests {
-		if !dp.Disabled {
 
-			dp.Name = k
-			ingests := make([]common.IngestPoint, 0)
+		if dp.Disabled {
+			continue
+		}
 
-			// gather ingest points
-			for _, ip := range dp.Ingests {
-				if point, ok := ingest.GetIngestPoint(ip); !ok {
-					log.Warnf("DigestPoint %s has %s IngestPoint configured, but no such IngestPoint exists", dp.Name, ip)
-					continue
-				} else {
-					ingests = append(ingests, point)
-				}
-			}
+		dp.Name = k
 
-			_, err := digest.NewDigestPoint(dp, ingests)
+		d, err := digest.New(dp)
 
-			if err != nil {
-				logrus.Errorf("Failed to create digest point. Err: %s", err.Error())
+		if err != nil {
+			logrus.Errorf("Failed to create digest point. Err: %s", err.Error())
+			continue
+		}
+
+		// gather ingest points
+		for _, ip := range dp.Ingests {
+			if messenger, ok := ingest.GetIngestPoint(ip); !ok {
+				log.Warnf("DigestPoint %s has %s IngestPoint configured, but no such IngestPoint exists", dp.Name, ip)
 				continue
+			} else {
+				d.Consume(messenger.Messages())
 			}
 		}
 	}
@@ -137,4 +138,10 @@ func rotateLog(logfile string) (*os.File, error) {
 	}
 
 	return os.Create(logfile)
+}
+
+func consume(c common.Consumer, messengers []common.Messenger) {
+	for _, v := range messengers {
+		c.Consume(v.Messages())
+	}
 }

@@ -15,7 +15,8 @@ deps: clean-deps
 	github.com/go-redis/redis \
 	github.com/x-cray/logrus-prefixed-formatter \
 	github.com/BurntSushi/toml \
-	github.com/sevlyar/go-daemon
+	github.com/sevlyar/go-daemon \
+	github.com/gorilla/websocket
 
 build: clean
 	@echo ${GOPATH}

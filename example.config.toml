@@ -59,5 +59,7 @@ Fields = [
     # (optional) default to false
     Disabled = false
 
-
-
+    [DigestPoints.ws-out]
+    Type = "ws"
+    Port = 9999
+    Ingests = ["redis-in"]

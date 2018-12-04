@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	random "math/rand"
 	"net"
 )
 
@@ -22,23 +23,22 @@ type tlsConfig struct {
 	Delimiter byte
 }
 
-func NewTLSIngest(name string, conf *tlsConfig) (common.IngestPoint, error) {
+type tlsIngest struct {
+	common.IngestPoint
+}
+
+func NewTLSIngest(name string, conf *tlsConfig) (common.Messenger, error) {
 
 	log := common.ContextLogger(context.WithValue(context.Background(), "prefix", "tlsIngest"))
-	point := &ingest{
-		name:       name,
-		ingestType: common.INGEST_TYPE_TLS,
-		out:        make(chan string),
-	}
 
 	if conf.Port == 0 {
 		log.Warnf("TLS port should be > 0")
-		return point, errors.New("invalid port 0")
+		return nil, errors.New("invalid port 0")
 	}
 
 	if len(conf.Cert) == 0 || len(conf.Key) == 0 {
 		log.Warnf("Invalid certificate or key path. Cert: %s. Key: %s", conf.Cert, conf.Key)
-		return point, errors.New("invalid certificate or key path")
+		return nil, errors.New("invalid certificate or key path")
 	}
 
 	if conf.Delimiter == 0 {
@@ -46,11 +46,23 @@ func NewTLSIngest(name string, conf *tlsConfig) (common.IngestPoint, error) {
 		conf.Delimiter = '\n'
 	}
 
+	if len(name) == 0 {
+		name = fmt.Sprintf("tls-ingest#%d", random.Int())
+	}
+
+	point := &tlsIngest{
+		common.IngestPoint{
+			Name: name,
+			Type: common.INGEST_TYPE_TLS,
+			Msg:  make(chan string),
+		},
+	}
+
 	cert, err := tls.LoadX509KeyPair(conf.Cert, conf.Key)
 
 	if err != nil {
 		log.Errorf("Failed to load keypair. Err: %s", err.Error())
-		return point, err
+		return nil, err
 	}
 
 	ca, err := ioutil.ReadFile(conf.CA)
@@ -70,7 +82,7 @@ func NewTLSIngest(name string, conf *tlsConfig) (common.IngestPoint, error) {
 
 	if err != nil {
 		log.Errorf("Failed to start server. Err: %s", err.Error())
-		return point, err
+		return nil, err
 	}
 
 	log.Infof("TLS server started. Waiting for connections...")
@@ -88,14 +100,17 @@ func NewTLSIngest(name string, conf *tlsConfig) (common.IngestPoint, error) {
 
 			go read(conn, ch, conf.Delimiter)
 		}
-	}(server, point.Output())
+	}(server, point.Msg)
 
 	return point, nil
 }
 
 func read(conn net.Conn, ch chan string, delim byte) {
 
+	log := common.ContextLogger(context.WithValue(context.Background(), "prefix", "tlsIngest"))
+
 	defer conn.Close()
+	defer close(ch)
 	reader := bufio.NewReader(conn)
 
 	for {
@@ -114,9 +129,11 @@ func read(conn net.Conn, ch chan string, delim byte) {
 		default:
 			// drop message if there are no consumers
 		}
-
-		ch <- string(b[:len(b)-1])
 	}
 
 	log.Debugf("Connection from %s has been closed", conn.RemoteAddr())
+}
+
+func (i *tlsIngest) Messages() chan string {
+	return i.Msg
 }

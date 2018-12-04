@@ -1,14 +1,17 @@
 package common
 
 const (
-	INGEST_TYPE_TLS   = "tls"
-	INGEST_TYPE_REDIS = "redis"
-	INGEST_TYPE_HTTPS = "https"
+	INGEST_TYPE_TLS   IngestType = "tls"
+	INGEST_TYPE_REDIS IngestType = "redis"
+	INGEST_TYPE_HTTPS IngestType = "https"
 
-	DIGEST_TYPE_REDIS     = INGEST_TYPE_REDIS
-	DIGEST_TYPE_WEBSOCKET = "ws"
-	DIGEST_TYPE_FILE      = "file"
+	DIGEST_TYPE_REDIS     DigestType = "redis"
+	DIGEST_TYPE_WEBSOCKET DigestType = "ws"
+	DIGEST_TYPE_FILE      DigestType = "file"
 )
+
+type DigestType string
+type IngestType string
 
 type AppConfig struct {
 	LogConfig    LogConfig              `toml:"Logger"`
@@ -37,17 +40,21 @@ type PointConfig struct {
 	Delimiter   byte     `toml:"Delimiter,omitempty"`
 }
 
-type IngestPoint interface {
-	IngestType() string
-	Name() string
-	Output() chan string
+type IngestPoint struct {
+	Type IngestType
+	Name string
+	Msg  chan string
 }
 
-type DigestPoint interface {
-	DigestType() string
-	Name() string
-	Ingests() []IngestPoint
-	Ingest(name string) (IngestPoint, error)
-	AddIngest(i IngestPoint) error
-	RemoveIngest(name string)
+type DigestPoint struct {
+	Type DigestType
+	Name string
+}
+
+type Consumer interface {
+	Consume(msg chan string) error
+}
+
+type Messenger interface {
+	Messages() chan string
 }

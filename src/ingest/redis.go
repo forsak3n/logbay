@@ -17,12 +17,10 @@ type redisConf struct {
 
 type redisIngest struct {
 	common.IngestPoint
-	name string
-	pub  *redis.PubSub
-	out  chan string
+	pub *redis.PubSub
 }
 
-func NewRedisIngest(name string, conf *redisConf) (common.IngestPoint, error) {
+func NewRedisIngest(name string, conf *redisConf) (common.Messenger, error) {
 
 	log := common.ContextLogger(context.WithValue(context.Background(), "prefix", "redisIngest"))
 
@@ -51,29 +49,24 @@ func NewRedisIngest(name string, conf *redisConf) (common.IngestPoint, error) {
 	})
 
 	ingest := &redisIngest{
-		name: name,
-		pub:  r.PSubscribe(conf.Channel),
-		out:  make(chan string),
+		common.IngestPoint{
+			Type: common.INGEST_TYPE_REDIS,
+			Name: name,
+			Msg:  make(chan string),
+		},
+		r.PSubscribe(conf.Channel),
 	}
 
-	go ingest.consume()
+	go ingest.read()
 
 	return ingest, nil
 }
 
-func (i *redisIngest) IngestType() string {
-	return common.INGEST_TYPE_REDIS
+func (i *redisIngest) Messages() chan string {
+	return i.Msg
 }
 
-func (i *redisIngest) Name() string {
-	return i.name
-}
-
-func (i *redisIngest) Output() chan string {
-	return i.out
-}
-
-func (i *redisIngest) consume() {
+func (i *redisIngest) read() {
 	for {
 		select {
 		case msg := <-i.pub.Channel():
@@ -87,7 +80,7 @@ func (i *redisIngest) consume() {
 func (i *redisIngest) write(msg string) {
 
 	select {
-	case i.out <- msg:
+	case i.Msg <- msg:
 	default:
 		// do nothing
 	}
