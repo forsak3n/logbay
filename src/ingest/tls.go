@@ -13,6 +13,7 @@ import (
 	"io/ioutil"
 	random "math/rand"
 	"net"
+	"time"
 )
 
 type tlsConfig struct {
@@ -132,7 +133,8 @@ func read(conn net.Conn, ch chan string, delim byte) {
 		select {
 		case ch <- string(b[:len(b)-1]):
 		default:
-			// drop message if there are no consumers
+			// drop message if there are no consumers or if channel buffer is full. wait a little to reduce steal time
+			time.Sleep(100 * time.Millisecond)
 		}
 	}
 

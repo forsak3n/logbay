@@ -88,6 +88,7 @@ func (i *redisIngest) write(msg string) {
 	select {
 	case i.Msg <- msg:
 	default:
-		// do nothing
+		// drop message if there are no consumers or if channel buffer is full. wait a little to reduce steal time
+		time.Sleep(100 * time.Millisecond)
 	}
 }
