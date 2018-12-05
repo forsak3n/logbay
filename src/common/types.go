@@ -1,13 +1,15 @@
 package common
 
 const (
-	INGEST_TYPE_TLS   IngestType = "tls"
-	INGEST_TYPE_REDIS IngestType = "redis"
-	INGEST_TYPE_HTTPS IngestType = "https"
+	INGEST_TYPE_TLS       IngestType = "tls"
+	INGEST_TYPE_REDIS     IngestType = "redis"
+	INGEST_TYPE_HTTPS     IngestType = "https"
+	INGEST_TYPE_SIMULATED IngestType = "simulated"
 
 	DIGEST_TYPE_REDIS     DigestType = "redis"
 	DIGEST_TYPE_WEBSOCKET DigestType = "ws"
 	DIGEST_TYPE_FILE      DigestType = "file"
+	DIGEST_TYPE_ELASTIC   DigestType = "elastic"
 )
 
 type DigestType string
@@ -39,6 +41,11 @@ type PointConfig struct {
 	Ingests     []string `toml:"Ingests,omitempty"`
 	Delimiter   byte     `toml:"Delimiter,omitempty"`
 	Buffer      int      `toml:"Buffer,omitempty"`
+	ESIndex     string   `toml:"ESIndex,omitempty"`
+	ESDocument  string   `toml:"ESDocument,omitempty"`
+	ESBatchSize int      `toml:"ESBatchSize,omitempty"`
+	MsgLength   int      `toml:"MsgLength,omitempty"`
+	MsgPerSec   int      `toml:"MsgPerSec,omitempty"`
 }
 
 type IngestPoint struct {
