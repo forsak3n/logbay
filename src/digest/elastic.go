@@ -101,7 +101,7 @@ func NewElasticDigest(name string, cfg *ElasticDigestCfg) (common.Consumer, erro
 
 	if len(cfg.Host) == 0 {
 		log.Debugln("Host is not configured. Using localhost")
-		cfg.Host = "localhost"
+		cfg.Host = "http://localhost:9200"
 	}
 
 	if cfg.BatchSize == 0 {

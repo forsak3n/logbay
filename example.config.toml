@@ -44,7 +44,7 @@ Fields = [
 [DigestPoints]
 
     [DigestPoints.redis-out]
-    # (required) ingest point type
+    # (required) digest point type
     Type = "redis"
     # (optional) destination redis host. defaults to localhost
     Host = "example.com"
@@ -56,10 +56,33 @@ Fields = [
     # useful for routing.
     # Example: Message {"process": "myprocess", "message": "any message", "id": "12345"} will be published to logbay:myprocess:12345 channel
     Pattern = "logbay:{{process}}:{{id}}"
-    # (optional) default to false
+    # (optional) defaults to false
     Disabled = false
 
     [DigestPoints.ws-out]
+    # (required) digest point type
     Type = "ws"
+    # (optional) uri for WS server. default to 'logbay'
+    URL = "logbay"
+    # (optional) port for WS server
     Port = 9999
+    # (required) list of ingests to get messages from
     Ingests = ["redis-in"]
+    # (optional) defaults to false
+    Disabled = false
+
+    [DigestPoints.elastic-out]
+    # (required) digest point type
+    Type = "elastic"
+    # (optional) elastic server host. defaults to http://localhost:9200
+    Host = "http://localhost:9200"
+    # (required) elastic index name
+    ESIndex = "logbay"
+    # (required) elastic mapping name
+    ESDocument = "log_entry"
+    # (optional) how many messages to buffer before executing _bulk index request. Defaults to 100
+    ESBatchSize = 100
+    # (required) list of ingests to get messages from
+    Ingests = ["redis-in"]
+    # (optional) defaults to false
+    Disabled = false
