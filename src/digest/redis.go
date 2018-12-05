@@ -22,35 +22,20 @@ type redisDigest struct {
 	channel string
 }
 
-func (r *redisDigest) Consume(msg chan string) error {
+func (r *redisDigest) Consume(msg string) error {
 
 	pattern := regexp.MustCompile("{{(.*?)}}")
 	hasTemplates := pattern.MatchString(r.channel)
 
-	go func(msg chan string) {
-	loop:
-		for {
-			select {
-			case msg, ok := <-msg:
+	channel := r.channel
 
-				if !ok {
-					break loop
-				}
+	if hasTemplates {
+		channel = r.replaceTemplates(pattern, r.channel, msg)
+	}
 
-				var channel string
-
-				if hasTemplates {
-					channel = r.replaceTemplates(pattern, r.channel, msg)
-				}
-
-				if len(channel) > 0 {
-					r.redis.Publish(channel, msg)
-				}
-			default:
-				// do nothing
-			}
-		}
-	}(msg)
+	if len(channel) > 0 {
+		r.redis.Publish(channel, msg)
+	}
 
 	return nil
 }

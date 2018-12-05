@@ -5,10 +5,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"sync"
 )
 
-var storage = &sync.Map{}
+var storage = make(map[string]common.Messenger)
 
 func NewIngestPoint(i common.PointConfig) (point common.Messenger, err error) {
 
@@ -28,14 +27,21 @@ func NewIngestPoint(i common.PointConfig) (point common.Messenger, err error) {
 			Key:       i.Key,
 			CA:        i.CA,
 			Delimiter: i.Delimiter,
+			Buffer:    i.Buffer,
 		})
 	case common.INGEST_TYPE_REDIS:
 		point, err = NewRedisIngest(i.Name, &redisConf{
 			Host:    i.Host,
 			Port:    i.Port,
 			Channel: i.Pattern,
+			Buffer:    i.Buffer,
 		})
-	case common.INGEST_TYPE_HTTPS:
+	case common.INGEST_TYPE_SIMULATED:
+		point, err = NewSimulatedIngest(i.Name, &simulatorConf{
+			MsgLength: i.MsgLength,
+			MsgPerSec: i.MsgPerSec,
+			Buffer:    i.Buffer,
+		})
 	}
 
 	if err != nil {
@@ -47,25 +53,25 @@ func NewIngestPoint(i common.PointConfig) (point common.Messenger, err error) {
 }
 
 func GetIngestPoint(name string) (common.Messenger, bool) {
-	value, ok := storage.Load(name)
+	value, ok := storage[name]
 
 	if !ok {
 		return nil, ok
 	}
 
-	return value.(common.Messenger), ok
+	return value, ok
 }
 
 func SetIngestPoint(name string, i common.Messenger) {
 
 	log := common.ContextLogger(context.WithValue(context.Background(), "prefix", "launcher"))
 
-	_, ok := storage.Load(name)
+	_, ok := storage[name]
 
 	if ok {
 		log.Warnf("IngestPoint %s already exists. Skip init", name)
 		return
 	}
 
-	storage.Store(name, i)
+	storage[name] = i
 }

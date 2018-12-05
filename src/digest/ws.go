@@ -122,33 +122,18 @@ func (w *wsDigest) listen(url string, port int) {
 	go http.ListenAndServe(fmt.Sprintf("0.0.0.0:%d", port), nil)
 }
 
-func (w *wsDigest) Consume(msg chan string) error {
+func (w *wsDigest) Consume(msg string) error {
 
 	log := common.ContextLogger(context.WithValue(context.Background(), "prefix", "wsDigest"))
 
-	go func(msg chan string) {
-	loop:
-		for {
-			select {
-			case msg, ok := <-msg:
+	m, err := websocket.NewPreparedMessage(websocket.TextMessage, []byte(msg))
 
-				if !ok {
-					break loop
-				}
+	if err != nil {
+		log.Debugf("Can't prepare message %v", msg)
+		return err
+	}
 
-				m, err := websocket.NewPreparedMessage(websocket.TextMessage, []byte(msg))
-
-				if err != nil {
-					log.Debugf("Can't prepare message %v", msg)
-					continue
-				}
-
-				w.messages <- m
-			default:
-				// do nothing
-			}
-		}
-	}(msg)
+	w.messages <- m
 
 	return nil
 }

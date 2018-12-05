@@ -7,12 +7,14 @@ import (
 	"fmt"
 	"github.com/go-redis/redis"
 	"math/rand"
+	"time"
 )
 
 type redisConf struct {
 	Host    string
 	Port    int
 	Channel string
+	Buffer  int
 }
 
 type redisIngest struct {
@@ -44,6 +46,10 @@ func NewRedisIngest(name string, conf *redisConf) (common.Messenger, error) {
 		port = 6379
 	}
 
+	if conf.Buffer == 0 {
+		conf.Buffer = 50
+	}
+
 	r := redis.NewClient(&redis.Options{
 		Addr: fmt.Sprintf("%s:%d", host, port),
 	})
@@ -52,7 +58,7 @@ func NewRedisIngest(name string, conf *redisConf) (common.Messenger, error) {
 		common.IngestPoint{
 			Type: common.INGEST_TYPE_REDIS,
 			Name: name,
-			Msg:  make(chan string),
+			Msg:  make(chan string, conf.Buffer),
 		},
 		r.PSubscribe(conf.Channel),
 	}
@@ -72,7 +78,7 @@ func (i *redisIngest) read() {
 		case msg := <-i.pub.Channel():
 			i.write(msg.Payload)
 		default:
-			// do nothing
+			time.Sleep(100 * time.Millisecond)
 		}
 	}
 }

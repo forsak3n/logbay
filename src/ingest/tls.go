@@ -21,6 +21,7 @@ type tlsConfig struct {
 	Key       string
 	CA        string
 	Delimiter byte
+	Buffer    int
 }
 
 type tlsIngest struct {
@@ -50,11 +51,15 @@ func NewTLSIngest(name string, conf *tlsConfig) (common.Messenger, error) {
 		name = fmt.Sprintf("tls-ingest#%d", random.Int())
 	}
 
+	if conf.Buffer == 0 {
+		conf.Buffer = 50
+	}
+
 	point := &tlsIngest{
 		common.IngestPoint{
 			Name: name,
 			Type: common.INGEST_TYPE_TLS,
-			Msg:  make(chan string),
+			Msg:  make(chan string, conf.Buffer),
 		},
 	}
 

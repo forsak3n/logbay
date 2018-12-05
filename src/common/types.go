@@ -38,6 +38,7 @@ type PointConfig struct {
 	CA          string   `toml:"CA,omitempty"`
 	Ingests     []string `toml:"Ingests,omitempty"`
 	Delimiter   byte     `toml:"Delimiter,omitempty"`
+	Buffer      int      `toml:"Buffer,omitempty"`
 }
 
 type IngestPoint struct {
@@ -52,7 +53,7 @@ type DigestPoint struct {
 }
 
 type Consumer interface {
-	Consume(msg chan string) error
+	Consume(msg string) error
 }
 
 type Messenger interface {

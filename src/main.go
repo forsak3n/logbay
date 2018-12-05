@@ -30,7 +30,9 @@ func main() {
 
 	prepareLogger(config.LogConfig)
 	prepareIngests(config.IngestPoints)
-	prepareDigests(config.DigestPoints)
+	consumers := prepareDigests(config.DigestPoints)
+
+	dispatch(consumers)
 
 	<-make(chan byte)
 }
@@ -44,19 +46,25 @@ func loadConfig(p *string) (*common.AppConfig, error) {
 func prepareIngests(ingests map[string]common.PointConfig) {
 
 	for k, v := range ingests {
-		if !v.Disabled {
-			v.Name = k
-			_, err := ingest.NewIngestPoint(v)
 
-			if err != nil {
-				logrus.Errorf("Failed to create ingest point. Err: %s", err.Error())
-				continue
-			}
+		if v.Disabled {
+			continue
+		}
+
+		v.Name = k
+		_, err := ingest.NewIngestPoint(v)
+
+		if err != nil {
+			logrus.Errorf("Failed to create ingest point. Err: %s", err.Error())
+			continue
 		}
 	}
 }
 
-func prepareDigests(digests map[string]common.PointConfig) {
+func prepareDigests(digests map[string]common.PointConfig) map[string][]common.Consumer {
+
+	consumers := make(map[string][]common.Consumer)
+
 	for k, dp := range digests {
 
 		if dp.Disabled {
@@ -72,16 +80,18 @@ func prepareDigests(digests map[string]common.PointConfig) {
 			continue
 		}
 
-		// gather ingest points
-		for _, ip := range dp.Ingests {
-			if messenger, ok := ingest.GetIngestPoint(ip); !ok {
-				log.Warnf("DigestPoint %s has %s IngestPoint configured, but no such IngestPoint exists", dp.Name, ip)
+		// check ingest points
+		for _, v := range dp.Ingests {
+			if _, ok := ingest.GetIngestPoint(v); !ok {
+				log.Warnf("DigestPoint %s has %s IngestPoint configured, but no such IngestPoint exists", dp.Name, v)
 				continue
 			} else {
-				d.Consume(messenger.Messages())
+				consumers[v] = append(consumers[v], d)
 			}
 		}
 	}
+
+	return consumers
 }
 
 func prepareLogger(config common.LogConfig) {
@@ -140,8 +150,28 @@ func rotateLog(logfile string) (*os.File, error) {
 	return os.Create(logfile)
 }
 
-func consume(c common.Consumer, messengers []common.Messenger) {
-	for _, v := range messengers {
-		c.Consume(v.Messages())
+func dispatch(consumers map[string][]common.Consumer) {
+
+	for n, digests := range consumers {
+
+		messenger, ok := ingest.GetIngestPoint(n)
+
+		if !ok {
+			continue
+		}
+
+		go func() {
+			for {
+				select {
+				case msg := <-messenger.Messages():
+					for _, consumer := range digests {
+						consumer.Consume(msg)
+					}
+				default:
+					time.Sleep(100 * time.Millisecond)
+				}
+			}
+		}()
+
 	}
 }
