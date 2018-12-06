@@ -44,7 +44,7 @@ func NewTLSIngest(name string, conf *tlsConfig) (common.Messenger, error) {
 	}
 
 	if conf.Delimiter == 0 {
-		log.Infof("Delimiter is not configured. Using '\n'")
+		log.Infof("Delimiter is not configured. Using '\\n'")
 		conf.Delimiter = '\n'
 	}
 
@@ -116,7 +116,6 @@ func read(conn net.Conn, ch chan string, delim byte) {
 	log := common.ContextLogger(context.WithValue(context.Background(), "prefix", "tlsIngest"))
 
 	defer conn.Close()
-	defer close(ch)
 	reader := bufio.NewReader(conn)
 
 	for {
