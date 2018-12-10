@@ -116,13 +116,22 @@ func read(conn net.Conn, ch chan string, delim byte) {
 	log := common.ContextLogger(context.WithValue(context.Background(), "prefix", "tlsIngest"))
 
 	defer conn.Close()
-	reader := bufio.NewReader(conn)
+	r := bufio.NewReader(conn)
 
 	for {
-		b, err := reader.ReadBytes(delim)
+		conn.SetReadDeadline(time.Now().Add(30 * time.Second))
+		b, err := r.ReadBytes(delim)
 
-		if err != nil && err != io.EOF {
-			break
+		if err != nil {
+
+			if err == io.EOF {
+				break
+			}
+
+			if netErr, ok := err.(net.Error); ok && !netErr.Temporary() {
+				// unexpected error
+				break
+			}
 		}
 
 		if len(b) == 0 {
