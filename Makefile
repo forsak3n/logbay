@@ -1,7 +1,7 @@
 export GOPATH = ${PWD}/vendor
 
 CWD = $(shell pwd)
-OUT := ${PWD}/bin/logthing
+OUT := ${PWD}/bin/logbay
 GO_FILES := $(shell find ./src -name '*.go' | grep -v /vendor/)
 VERSION := $(shell git describe --always --long)
 LD_FLAGS := -X main.BUILD_VERSION=${VERSION}
@@ -15,7 +15,8 @@ deps: clean-deps
 	github.com/go-redis/redis \
 	github.com/x-cray/logrus-prefixed-formatter \
 	github.com/BurntSushi/toml \
-	github.com/sevlyar/go-daemon
+	github.com/sevlyar/go-daemon \
+	github.com/gorilla/websocket
 
 build: clean
 	@echo ${GOPATH}
@@ -25,7 +26,7 @@ build: clean
 clean:
 	@echo Cleaning up...
 	-@rm -rf ${CWD}/dist/*
-	-@rm -rf ${CWD}/bin/proton
+	-@rm -rf ${CWD}/bin/logbay
 
 run: build
-	./bin/logthing
+	./bin/logbay

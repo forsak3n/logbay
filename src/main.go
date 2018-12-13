@@ -5,7 +5,6 @@ import (
 	"./digest"
 	"./ingest"
 	"context"
-	"crypto/tls"
 	"flag"
 	"fmt"
 	"github.com/BurntSushi/toml"
@@ -31,9 +30,9 @@ func main() {
 
 	prepareLogger(config.LogConfig)
 	prepareIngests(config.IngestPoints)
-	prepareDigests(config.DigestPoints)
+	consumers := prepareDigests(config.DigestPoints)
 
-	go runTest()
+	dispatch(consumers)
 
 	<-make(chan byte)
 }
@@ -47,43 +46,53 @@ func loadConfig(p *string) (*common.AppConfig, error) {
 func prepareIngests(ingests map[string]common.PointConfig) {
 
 	for k, v := range ingests {
-		if v.Enabled {
-			v.Name = k
-			_, err := ingest.NewIngestPoint(v)
 
-			if err != nil {
-				logrus.Errorf("Failed to create ingest point. Err: %s", err.Error())
-				continue
-			}
+		if v.Disabled {
+			continue
+		}
+
+		v.Name = k
+		_, err := ingest.NewIngestPoint(v)
+
+		if err != nil {
+			logrus.Errorf("Failed to create ingest point. Err: %s", err.Error())
+			continue
 		}
 	}
 }
 
-func prepareDigests(digests map[string]common.PointConfig) {
-	for k, dp := range digests {
-		if dp.Enabled {
+func prepareDigests(conf map[string]common.PointConfig) map[string][]common.Consumer {
 
-			dp.Name = k
-			ingests := make([]common.IngestPoint, 0)
+	consumers := make(map[string][]common.Consumer)
 
-			// gather ingest points
-			for _, ip := range dp.Ingests {
-				if point, ok := ingest.GetIngestPoint(ip); !ok {
-					log.Warnf("DigestPoint %s has %s IngestPoint configured, but no such IngestPoint exists", dp.Name, ip)
-					continue
-				} else {
-					ingests = append(ingests, point)
-				}
-			}
+	for name, pointConfig := range conf {
 
-			_, err := digest.NewDigestPoint(dp, ingests)
+		if pointConfig.Disabled {
+			continue
+		}
 
-			if err != nil {
-				logrus.Errorf("Failed to create digest point. Err: %s", err.Error())
+		pointConfig.Name = name
+
+		consumer, err := digest.New(pointConfig)
+
+		if err != nil {
+			logrus.Errorf("Failed to create digest point. Err: %s", err.Error())
+			continue
+		}
+
+		// check ingest points
+		for _, ingestName := range pointConfig.Ingests {
+			if _, ok := ingest.GetIngestPoint(ingestName); !ok {
+				log.Warnf("DigestPoint %s has %s IngestPoint configured, but no such IngestPoint exists", pointConfig.Name, ingestName)
 				continue
+			} else {
+				log.Debugf("%s consuming from %s", name, ingestName)
+				consumers[ingestName] = append(consumers[ingestName], consumer)
 			}
 		}
 	}
+
+	return consumers
 }
 
 func prepareLogger(config common.LogConfig) {
@@ -142,23 +151,28 @@ func rotateLog(logfile string) (*os.File, error) {
 	return os.Create(logfile)
 }
 
-func runTest() {
-	cert, err := tls.LoadX509KeyPair("certs/server.pem", "certs/server.key")
-	if err != nil {
-		log.Fatalf("server: loadkeys: %s", err)
-	}
-	config := tls.Config{Certificates: []tls.Certificate{cert}, InsecureSkipVerify: true}
-	conn, err := tls.Dial("tcp", "127.0.0.1:8001", &config)
-	if err != nil {
-		log.Fatalf("client: dial: %s", err)
-	}
-	defer conn.Close()
-	log.Println("client: connected to: ", conn.RemoteAddr())
+func dispatch(mapping map[string][]common.Consumer) {
 
-	for {
-		conn.Write([]byte("{\"companyId\": \"teradek\"}\n"))
-		time.Sleep(time.Second * 2)
-		conn.Write([]byte("{\"companyId\": \"webb\"}\n"))
-		time.Sleep(time.Second * 2)
+	for ingestName, consumers := range mapping {
+
+		messenger, ok := ingest.GetIngestPoint(ingestName)
+
+		if !ok {
+			continue
+		}
+
+		go func(m common.Messenger, consumers []common.Consumer) {
+			for {
+				select {
+				case msg := <-messenger.Messages():
+					for _, consumer := range consumers {
+						consumer.Consume(msg)
+					}
+				default:
+					time.Sleep(100 * time.Millisecond)
+				}
+			}
+		}(messenger, consumers)
+
 	}
 }
