@@ -61,19 +61,19 @@ func prepareIngests(ingests map[string]common.PointConfig) {
 	}
 }
 
-func prepareDigests(digests map[string]common.PointConfig) map[string][]common.Consumer {
+func prepareDigests(conf map[string]common.PointConfig) map[string][]common.Consumer {
 
 	consumers := make(map[string][]common.Consumer)
 
-	for k, dp := range digests {
+	for name, pointConfig := range conf {
 
-		if dp.Disabled {
+		if pointConfig.Disabled {
 			continue
 		}
 
-		dp.Name = k
+		pointConfig.Name = name
 
-		d, err := digest.New(dp)
+		consumer, err := digest.New(pointConfig)
 
 		if err != nil {
 			logrus.Errorf("Failed to create digest point. Err: %s", err.Error())
@@ -81,12 +81,13 @@ func prepareDigests(digests map[string]common.PointConfig) map[string][]common.C
 		}
 
 		// check ingest points
-		for _, v := range dp.Ingests {
-			if _, ok := ingest.GetIngestPoint(v); !ok {
-				log.Warnf("DigestPoint %s has %s IngestPoint configured, but no such IngestPoint exists", dp.Name, v)
+		for _, ingestName := range pointConfig.Ingests {
+			if _, ok := ingest.GetIngestPoint(ingestName); !ok {
+				log.Warnf("DigestPoint %s has %s IngestPoint configured, but no such IngestPoint exists", pointConfig.Name, ingestName)
 				continue
 			} else {
-				consumers[v] = append(consumers[v], d)
+				log.Debugf("%s consuming from %s", name, ingestName)
+				consumers[ingestName] = append(consumers[ingestName], consumer)
 			}
 		}
 	}
@@ -150,28 +151,28 @@ func rotateLog(logfile string) (*os.File, error) {
 	return os.Create(logfile)
 }
 
-func dispatch(consumers map[string][]common.Consumer) {
+func dispatch(mapping map[string][]common.Consumer) {
 
-	for n, digests := range consumers {
+	for ingestName, consumers := range mapping {
 
-		messenger, ok := ingest.GetIngestPoint(n)
+		messenger, ok := ingest.GetIngestPoint(ingestName)
 
 		if !ok {
 			continue
 		}
 
-		go func() {
+		go func(m common.Messenger, consumers []common.Consumer) {
 			for {
 				select {
 				case msg := <-messenger.Messages():
-					for _, consumer := range digests {
+					for _, consumer := range consumers {
 						consumer.Consume(msg)
 					}
 				default:
 					time.Sleep(100 * time.Millisecond)
 				}
 			}
-		}()
+		}(messenger, consumers)
 
 	}
 }

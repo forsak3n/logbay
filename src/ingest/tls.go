@@ -91,7 +91,7 @@ func NewTLSIngest(name string, conf *tlsConfig) (common.Messenger, error) {
 		return nil, err
 	}
 
-	log.Infof("TLS server started. Waiting for connections...")
+	log.Infof("Listening for incoming TLS connections on %d", conf.Port)
 
 	go func(server net.Listener, ch chan string) {
 		for {
@@ -125,11 +125,13 @@ func read(conn net.Conn, ch chan string, delim byte) {
 		if err != nil {
 
 			if err == io.EOF {
+				log.Debugf("Connection %s closed by other party", conn.RemoteAddr())
 				break
 			}
 
 			if netErr, ok := err.(net.Error); ok && !netErr.Temporary() {
 				// unexpected error
+				log.Debugf("Unexpected error while reading from %s. Closing connection now", conn.RemoteAddr())
 				break
 			}
 		}
@@ -145,8 +147,6 @@ func read(conn net.Conn, ch chan string, delim byte) {
 			time.Sleep(100 * time.Millisecond)
 		}
 	}
-
-	log.Debugf("Connection from %s has been closed", conn.RemoteAddr())
 }
 
 func (i *tlsIngest) Messages() chan string {

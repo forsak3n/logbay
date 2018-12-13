@@ -42,10 +42,13 @@ func NewIngestPoint(i common.PointConfig) (point common.Messenger, err error) {
 			MsgPerSec: i.MsgPerSec,
 			Buffer:    i.Buffer,
 		})
+
+	default:
+		return nil, errors.New(fmt.Sprintf("invalid ingest point type %s", i.Type))
 	}
 
 	if err != nil {
-		return nil, errors.New(fmt.Sprintf("invalid ingest point type %s", i.Type))
+		return nil, err
 	}
 
 	SetIngestPoint(i.Name, point)
