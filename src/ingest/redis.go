@@ -1,11 +1,11 @@
 package ingest
 
 import (
-	"../common"
 	"context"
 	"errors"
 	"fmt"
 	"github.com/go-redis/redis"
+	"logbay/common"
 	"math/rand"
 	"time"
 )

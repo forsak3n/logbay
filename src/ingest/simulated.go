@@ -1,9 +1,9 @@
 package ingest
 
 import (
-	"../common"
 	"context"
 	"fmt"
+	"logbay/common"
 	"math/rand"
 	"time"
 )
