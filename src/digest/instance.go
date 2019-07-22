@@ -1,10 +1,10 @@
 package digest
 
 import (
-	"../common"
 	"context"
 	"errors"
 	"fmt"
+	"logbay/common"
 )
 
 func New(config common.PointConfig) (common.Consumer, error) {

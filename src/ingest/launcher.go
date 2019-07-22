@@ -1,10 +1,10 @@
 package ingest
 
 import (
-	"../common"
 	"context"
 	"errors"
 	"fmt"
+	"logbay/common"
 )
 
 var storage = make(map[string]common.Messenger)
@@ -34,7 +34,7 @@ func NewIngestPoint(i common.PointConfig) (point common.Messenger, err error) {
 			Host:    i.Host,
 			Port:    i.Port,
 			Channel: i.Pattern,
-			Buffer:    i.Buffer,
+			Buffer:  i.Buffer,
 		})
 	case common.INGEST_TYPE_SIMULATED:
 		point, err = NewSimulatedIngest(i.Name, &simulatorConf{

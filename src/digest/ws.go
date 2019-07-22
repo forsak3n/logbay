@@ -1,11 +1,11 @@
 package digest
 
 import (
-	"../common"
 	"context"
 	"errors"
 	"fmt"
 	"github.com/gorilla/websocket"
+	"logbay/common"
 	"math/rand"
 	"net"
 	"net/http"
@@ -108,7 +108,7 @@ func (w *wsDigest) listen(url string, port int) {
 				return nil
 			}
 
-			wsConn.pongReceivedAt = time.Now();
+			wsConn.pongReceivedAt = time.Now()
 			w.clients.Store(clientKey, wsConn)
 			return nil
 		})

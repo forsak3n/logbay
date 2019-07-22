@@ -1,11 +1,11 @@
 package digest
 
 import (
-	"../common"
 	"bytes"
 	"context"
 	"errors"
 	"fmt"
+	"logbay/common"
 	"math/rand"
 	"net/http"
 	"time"

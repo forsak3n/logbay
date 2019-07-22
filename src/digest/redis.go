@@ -1,10 +1,10 @@
 package digest
 
 import (
-	"../common"
 	"context"
 	"fmt"
 	"github.com/go-redis/redis"
+	"logbay/common"
 	"math/rand"
 	"regexp"
 )
