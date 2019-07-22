@@ -1,10 +1,11 @@
 package digest
 
 import (
-	"../common"
 	"context"
 	"errors"
 	"fmt"
+
+	"logbay/common"
 )
 
 func New(config common.PointConfig) (common.Consumer, error) {
@@ -14,20 +15,20 @@ func New(config common.PointConfig) (common.Consumer, error) {
 	log.Infof("Starting %s digest point. Type: %s", config.Name, config.Type)
 
 	switch common.DigestType(config.Type) {
-	case common.DIGEST_TYPE_ELASTIC:
+	case common.DigestElastic:
 		return NewElasticDigest(config.Name, &ElasticDigestCfg{
 			Host:      config.Host,
 			Index:     config.ESIndex,
 			Document:  config.ESDocument,
 			BatchSize: config.ESBatchSize,
 		})
-	case common.DIGEST_TYPE_REDIS:
+	case common.DigestRedis:
 		return NewRedisDigest(config.Name, &RedisDigestCfg{
 			Host:    config.Host,
 			Port:    config.Port,
 			Channel: config.Pattern,
 		})
-	case common.DIGEST_TYPE_WEBSOCKET:
+	case common.DigestWebSocket:
 		return NewWSDigest(config.Name, &WSDigestCfg{
 			URL:  config.Endpoint,
 			Port: config.Port,

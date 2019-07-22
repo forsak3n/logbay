@@ -1,11 +1,12 @@
 package ingest
 
 import (
-	"../common"
 	"context"
 	"fmt"
 	"math/rand"
 	"time"
+
+	"logbay/common"
 )
 
 type simulatorConf struct {

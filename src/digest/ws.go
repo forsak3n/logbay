@@ -1,21 +1,23 @@
 package digest
 
 import (
-	"../common"
 	"context"
 	"errors"
 	"fmt"
-	"github.com/gorilla/websocket"
 	"math/rand"
 	"net"
 	"net/http"
 	"sync"
 	"time"
+
+	"github.com/gorilla/websocket"
+
+	"logbay/common"
 )
 
 const (
-	WRITE_TIMEOUT_SEC  = 10 * time.Second
-	MAX_WRITE_ATTEMPTS = 10 * time.Second
+	WriteTimeout     = 10 * time.Second
+	MaxWriteAttempts = 10 * time.Second
 )
 
 type WSDigestCfg struct {
@@ -62,7 +64,7 @@ func NewWSDigest(name string, conf *WSDigestCfg) (common.Consumer, error) {
 	d := &wsDigest{
 		common.DigestPoint{
 			Name: name,
-			Type: common.DIGEST_TYPE_WEBSOCKET,
+			Type: common.DigestWebSocket,
 		},
 		make(map[string]chan int),
 		make(chan *websocket.PreparedMessage),
@@ -108,7 +110,7 @@ func (w *wsDigest) listen(url string, port int) {
 				return nil
 			}
 
-			wsConn.pongReceivedAt = time.Now();
+			wsConn.pongReceivedAt = time.Now()
 			w.clients.Store(clientKey, wsConn)
 			return nil
 		})
@@ -155,7 +157,7 @@ loop:
 
 				c := value.(*wsConn)
 
-				if err := c.conn.SetWriteDeadline(time.Now().Add(WRITE_TIMEOUT_SEC)); err != nil {
+				if err := c.conn.SetWriteDeadline(time.Now().Add(WriteTimeout)); err != nil {
 					log.Errorf("set write deadline failed on %s", c.conn.RemoteAddr().String())
 					return true
 				}

@@ -1,12 +1,12 @@
 package ingest
 
 import (
-	"../common"
 	"bufio"
+	"bytes"
 	"context"
 	"crypto/rand"
 	"crypto/tls"
-	"crypto/x509"
+	"encoding/pem"
 	"errors"
 	"fmt"
 	"io"
@@ -14,6 +14,8 @@ import (
 	random "math/rand"
 	"net"
 	"time"
+
+	"logbay/common"
 )
 
 type tlsConfig struct {
@@ -59,7 +61,7 @@ func NewTLSIngest(name string, conf *tlsConfig) (common.Messenger, error) {
 	point := &tlsIngest{
 		common.IngestPoint{
 			Name: name,
-			Type: common.INGEST_TYPE_TLS,
+			Type: common.IngestTLS,
 			Msg:  make(chan string, conf.Buffer),
 		},
 	}
@@ -74,14 +76,39 @@ func NewTLSIngest(name string, conf *tlsConfig) (common.Messenger, error) {
 	ca, err := ioutil.ReadFile(conf.CA)
 
 	if err != nil {
-		log.Errorf("failed to read root certificate. Err: %s", err.Error())
+		log.Errorf("failed to read certificate authority chain. Err: %s", err.Error())
 		return nil, err
 	}
 
-	roots := x509.NewCertPool()
-	roots.AppendCertsFromPEM(ca)
+	{
+		var der *pem.Block
+		rest := []byte(ca)
 
-	tlsConfig := tls.Config{Certificates: []tls.Certificate{cert}, RootCAs: roots}
+		duplicate := func(b []byte) bool {
+			for _, data := range cert.Certificate {
+				if bytes.Equal(data, b) {
+					return true
+				}
+			}
+			return false
+		}
+
+		for {
+			der, rest = pem.Decode(rest)
+			if der == nil {
+				break
+			}
+			if der.Type != "CERTIFICATE" {
+				continue
+			}
+			if duplicate(der.Bytes) {
+				continue
+			}
+			cert.Certificate = append(cert.Certificate, der.Bytes)
+		}
+	}
+
+	tlsConfig := tls.Config{Certificates: []tls.Certificate{cert}}
 	tlsConfig.Rand = rand.Reader
 
 	server, err := tls.Listen("tcp", fmt.Sprintf("0.0.0.0:%d", conf.Port), &tlsConfig)

@@ -1,10 +1,11 @@
 package ingest
 
 import (
-	"../common"
 	"context"
 	"errors"
 	"fmt"
+
+	"logbay/common"
 )
 
 var storage = make(map[string]common.Messenger)
@@ -20,7 +21,7 @@ func NewIngestPoint(i common.PointConfig) (point common.Messenger, err error) {
 	}
 
 	switch common.IngestType(i.Type) {
-	case common.INGEST_TYPE_TLS:
+	case common.IngestTLS:
 		point, err = NewTLSIngest(i.Name, &tlsConfig{
 			Port:      i.Port,
 			Cert:      i.Certificate,
@@ -29,14 +30,14 @@ func NewIngestPoint(i common.PointConfig) (point common.Messenger, err error) {
 			Delimiter: i.Delimiter,
 			Buffer:    i.Buffer,
 		})
-	case common.INGEST_TYPE_REDIS:
+	case common.IngestRedis:
 		point, err = NewRedisIngest(i.Name, &redisConf{
 			Host:    i.Host,
 			Port:    i.Port,
 			Channel: i.Pattern,
-			Buffer:    i.Buffer,
+			Buffer:  i.Buffer,
 		})
-	case common.INGEST_TYPE_SIMULATED:
+	case common.IngestSimulated:
 		point, err = NewSimulatedIngest(i.Name, &simulatorConf{
 			MsgLength: i.MsgLength,
 			MsgPerSec: i.MsgPerSec,
