@@ -4,14 +4,16 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"github.com/BurntSushi/toml"
-	"github.com/sirupsen/logrus"
-	"logbay/common"
-	"logbay/digest"
-	"logbay/ingest"
 	"os"
 	"path/filepath"
 	"time"
+
+	"github.com/BurntSushi/toml"
+	"github.com/sirupsen/logrus"
+
+	"logbay/common"
+	"logbay/digest"
+	"logbay/ingest"
 )
 
 var log = common.ContextLogger(context.WithValue(context.Background(), "prefix", "main"))

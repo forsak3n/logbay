@@ -2,9 +2,10 @@ package common
 
 import (
 	"context"
+	"os"
+
 	log "github.com/sirupsen/logrus"
 	"github.com/x-cray/logrus-prefixed-formatter"
-	"os"
 )
 
 var fields = make([]string, 0)

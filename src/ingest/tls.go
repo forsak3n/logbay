@@ -11,10 +11,11 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"logbay/common"
 	random "math/rand"
 	"net"
 	"time"
+
+	"logbay/common"
 )
 
 type tlsConfig struct {
@@ -60,7 +61,7 @@ func NewTLSIngest(name string, conf *tlsConfig) (common.Messenger, error) {
 	point := &tlsIngest{
 		common.IngestPoint{
 			Name: name,
-			Type: common.INGEST_TYPE_TLS,
+			Type: common.IngestTLS,
 			Msg:  make(chan string, conf.Buffer),
 		},
 	}

@@ -4,10 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/go-redis/redis"
-	"logbay/common"
 	"math/rand"
 	"time"
+
+	"github.com/go-redis/redis"
+
+	"logbay/common"
 )
 
 type redisConf struct {
@@ -56,7 +58,7 @@ func NewRedisIngest(name string, conf *redisConf) (common.Messenger, error) {
 
 	ingest := &redisIngest{
 		common.IngestPoint{
-			Type: common.INGEST_TYPE_REDIS,
+			Type: common.IngestRedis,
 			Name: name,
 			Msg:  make(chan string, conf.Buffer),
 		},

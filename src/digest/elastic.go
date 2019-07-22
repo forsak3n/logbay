@@ -5,10 +5,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"logbay/common"
 	"math/rand"
 	"net/http"
 	"time"
+
+	"logbay/common"
 )
 
 type ElasticDigestCfg struct {
@@ -116,7 +117,7 @@ func NewElasticDigest(name string, cfg *ElasticDigestCfg) (common.Consumer, erro
 	d := &elasticDigest{
 		common.DigestPoint{
 			Name: name,
-			Type: common.DIGEST_TYPE_ELASTIC,
+			Type: common.DigestElastic,
 		},
 		fmt.Sprintf("%s/%s/%s/_bulk", cfg.Host, cfg.Index, cfg.Document),
 		cfg.Index,

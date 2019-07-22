@@ -3,10 +3,12 @@ package digest
 import (
 	"context"
 	"fmt"
-	"github.com/go-redis/redis"
-	"logbay/common"
 	"math/rand"
 	"regexp"
+
+	"github.com/go-redis/redis"
+
+	"logbay/common"
 )
 
 type RedisDigestCfg struct {
@@ -85,7 +87,7 @@ func NewRedisDigest(name string, cfg *RedisDigestCfg) (common.Consumer, error) {
 	d := &redisDigest{
 		common.DigestPoint{
 			Name: name,
-			Type: common.DIGEST_TYPE_REDIS,
+			Type: common.DigestRedis,
 		},
 		r,
 		make(map[string]chan int, 0),

@@ -1,4 +1,4 @@
-module bitbucket.org/teradek/logbay/main
+module github.com/forsak3n/logbay
 
 go 1.12
 

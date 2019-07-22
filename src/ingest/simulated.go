@@ -3,9 +3,10 @@ package ingest
 import (
 	"context"
 	"fmt"
-	"logbay/common"
 	"math/rand"
 	"time"
+
+	"logbay/common"
 )
 
 type simulatorConf struct {
